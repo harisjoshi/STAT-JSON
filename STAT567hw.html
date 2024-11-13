@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+        
+        .node {
+            fill: #69b3a2;
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        
+        .label {
+            font-family: Arial, sans-serif;
+            font-size: 10px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+<svg width="800" height="600"></svg>
+
+<script>
+    // Load the JSON data from the GitHub link
+    d3.json("https://raw.githubusercontent.com/harisjoshi/STAT-JSON/refs/heads/main/Network_Data_for_D3.json")
+      .then(data => {
+          const width = 800;
+          const height = 600;
+
+          const svg = d3.select("svg")
+              .attr("width", width)
+              .attr("height", height);
+
+          // Set up the simulation with forces
+          const simulation = d3.forceSimulation(data.nodes)
+              .force("link", d3.forceLink(data.links).id(d => d.id).distance(100))
+              .force("charge", d3.forceManyBody().strength(-300))
+              .force("center", d3.forceCenter(width / 2, height / 2));
+
+          // Draw the links (edges)
+          const link = svg.append("g")
+              .attr("class", "links")
+              .selectAll("line")
+              .data(data.links)
+              .enter().append("line")
+              .attr("class", "link")
+              .attr("stroke-width", d => Math.sqrt(d.value));
+
+          // Draw the nodes
+          const node = svg.append("g")
+              .attr("class", "nodes")
+              .selectAll("circle")
+              .data(data.nodes)
+              .enter().append("circle")
+              .attr("class", "node")
+              .attr("r", 10)
+              .call(drag(simulation));
+
+          // Add labels to the nodes
+          const label = svg.append("g")
+              .selectAll("text")
+              .data(data.nodes)
+              .enter().append("text")
+              .attr("class", "label")
+              .attr("dy", -3)
+              .text(d => d.id);
+
+          // Update positions of nodes and links on each tick of the simulation
+          simulation.on("tick", () => {
+              link
+                  .attr("x1", d => d.source.x)
+                  .attr("y1", d => d.source.y)
+                  .attr("x2", d => d.source.x)
+                  .attr("y2", d => d.source.y);
+
+              node
+                  .attr("cx", d => d.x)
+                  .attr("cy", d => d.y);
+
+              label
+                  .attr("x", d => d.x)
+                  .attr("y", d => d.y);
+          });
+
+          // Drag functionality
+          function drag(simulation) {
+              return d3.drag()
+                  .on("start", event => {
+                      if (!event.active) simulation.alphaTarget(0.3).restart();
+                      event.subject.fx = event.subject.x;
+                      event.subject.fy = event.subject.y;
+                  })
+                  .on("drag", event => {
+                      event.subject.fx = event.x;
+                      event.subject.fy = event.y;
+                  })
+                  .on("end", event => {
+                      if (!event.active) simulation.alphaTarget(0);
+                      event.subject.fx = null;
+                      event.subject.fy = null;
+                  });
+          }
+      })
+      .catch(error => console.log("Error loading JSON file:", error));
+</script>
+</body>
+</html>
